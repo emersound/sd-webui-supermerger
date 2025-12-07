@@ -516,6 +516,16 @@ def on_ui_tabs():
         components.hiresfix = [genoptions,hrupscaler,hr2ndsteps,denois_str,hr_scale]
         components.lucks = [luckmode,lucksets,lucklimits_u,lucklimits_l,luckseed,luckserial,luckcustom,luckround]
 
+        # "Get from prompt" button - extracts LoRAs from txt2img prompt and populates the LoRA tab.
+        # Uses JavaScript to directly read the prompt from DOM, avoiding dependency on GenParamGetter.
+        # This approach works reliably in both normal and --api modes.
+        components.frompromptb.click(
+            fn=pluslora.frompromptf,
+            inputs=[components.sml_loranames[0]],
+            outputs=components.sml_loranames,
+            _js="() => [document.querySelector('#txt2img_prompt textarea')?.value || '']"
+        )
+
         setdefault.click(fn = configdealer,
             inputs =[*components.genparams,*components.hiresfix[1:],components.dfalse],
         )

@@ -1488,56 +1488,32 @@ def create_merge_metadata( sd, lmetas, lname, lprecision, metasets ):
 
 ##############################################################
 ####### Get loranames from prompt
+
 def frompromptf(*args):
-    outst = []
-    outss = []
-    prompt = args[1]
-    names, multis, lbws = loradealer(prompt, "", "")
-    for name, multi, lbw in zip(names, multis, lbws):
-        nml = [name,str(multi),lbw] if lbw is not None else [name,str(multi)]
-        outst.append(":".join(nml))
-        if name in selectable:
-            outss.append(name)
+    """
+    Extract LoRAs from txt2img prompt and populate the LoRA selection UI.
+    
+    Called by the "get from prompt" button. Handles both:
+    - Direct JS injection (prompt at args[0])
+    - GenParamGetter style (prompt at args[1])
+    
+    Returns:
+        Tuple of (checked_loras_list, "name:weight,..." string, True)
+    """
+    from scripts.mergers.prompt_utils import extract_loras_from_prompt
+    
+    # Handle both JS-injection (args[0] is string) and GenParamGetter (args[1] is prompt)
+    prompt = args[0] if isinstance(args[0], str) else (args[1] if len(args) > 1 else "")
+    
+    if not prompt:
+        return [], "", True
+    
+    # Use the clean extraction function with ss_output_name lookup
+    checked, formatted = extract_loras_from_prompt(prompt, selectable)
+    
     global pchanged
     pchanged = True
-    return outss,",".join(outst), True
-
-def loradealer(prompts,lratios,elementals):
-    _, extra_network_data = extra_networks.parse_prompts([prompts])
-    moduletypes = extra_network_data.keys()
-
-    outnames = []
-    outmultis = []
-    outlbws = []
-
-    for ltype in moduletypes:
-        lorans = []
-        lorars = []
-        loraps = []
-        multipliers = []
-        elements = []
-        if not (ltype == "lora" or ltype == "lyco") : continue
-        for called in extra_network_data[ltype]:
-            multiple = float(syntaxdealer(called.items,"unet=","te=",1))
-            multipliers.append(multiple)
-            lorans.append(called.items[0])
-            loraps.append(syntaxdealer(called.items,"lbw=",None,2))
-
-        if len(lorans) > 0:
-            outnames.extend(lorans)
-            outmultis.extend(multipliers)
-            outlbws.extend(loraps)
-
-    return outnames, outmultis, outlbws
-
-def syntaxdealer(items,type1,type2,index): #type "unet=", "x=", "lwbe=" 
-    target = [type1,type2] if type2 is not None else [type1]
-    for t in target:
-        for item in items:
-            if t in item:
-                return item.replace(t,"")
-    if index > len(items) - 1 :return None
-    return items[index] if "@" not in items[index] else 1
+    return checked, formatted, True
 
 ##############################################################
 ####### Extract lora from checkpoints args
@@ -1741,3 +1717,6 @@ def load_model(checkpoint_info, reload = False):
         forge_model_reload()
     else:
         sd_models.load_model(checkpoint_info)
+
+
+
